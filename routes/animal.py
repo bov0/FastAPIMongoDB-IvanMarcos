@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from config.db import conn
 from schemas.animal import animalEntity, animalesEntity
 from models.animal import Animal
 from bson import ObjectId
+from starlette.status import HTTP_204_NO_CONTENT
 
 animal = APIRouter()
 
@@ -35,13 +36,23 @@ def create_animal(animal: Animal):
     return animalEntity(animal)
 
 @animal.put("/animales/{id}")
-def update_animal(id: str):
-    # Replace the following line with your update logic
-    # e.g., conn.animales.animal.update_one({"_id": id}, {"$set": {"field": "value"}})
-    return {"message": "Animal updated successfully"}
+def update_animal(id: str, animal: Animal):
+    conn.animales.animal.find_one_and_update(
+        {"_id": ObjectId(id)},
+        {"$set": {
+            "nombre_animal": animal.nombre_animal,
+            "fecha_nacimiento": animal.fecha_nacimiento.isoformat(),
+            "edad": animal.edad,
+            "especie": animal.especie,
+            "habitat": animal.habitat,
+        }}
+    )
+    return animalEntity(conn.animales.animal.find_one({"_id": ObjectId(id)}))
 
 @animal.delete("/animales/{id}")
 def delete_animal(id: str):
-    # Replace the following line with your delete logic
-    # e.g., conn.animales.animal.delete_one({"_id": id})
-    return {"message": "Animal deleted successfully"}
+    conn.animales.animal.find_one_and_delete({
+        "_id": ObjectId(id)
+    })
+    return {"message": "Animal eliminado correctamente"}
+
