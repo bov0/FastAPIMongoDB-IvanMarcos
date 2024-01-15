@@ -1,3 +1,4 @@
+from xml.dom import ValidationErr
 from fastapi import APIRouter, HTTPException, Response
 from config.db import conn
 from schemas.animal import animalEntity, animalesEntity
@@ -25,29 +26,51 @@ def find_animal(id: str):
 
 @animal.post("/animales")
 def create_animal(animal: Animal):
-    new_animal = dict(animal)
-    
-    new_animal['fecha_nacimiento'] = animal.fecha_nacimiento.isoformat()
+    try:
+        new_animal = dict(animal)
+        new_animal['fecha_nacimiento'] = animal.fecha_nacimiento.isoformat()
 
-    id = conn.animales.animal.insert_one(new_animal).inserted_id
+        id = conn.animales.animal.insert_one(new_animal).inserted_id
 
-    animal = conn.animales.animal.find_one({"_id": id})
+        animal_result = conn.animales.animal.find_one({"_id": id})
 
-    return animalEntity(animal)
+        if animal_result:
+            return animalEntity(animal_result)
+
+        raise HTTPException(status_code=500, detail="Error al crear el animal.")
+    except ValidationErr as ve:
+        raise HTTPException(status_code=422, detail=f"Error de validación: {ve.errors()}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+
 
 @animal.put("/animales/{id}")
 def update_animal(id: str, animal: Animal):
-    conn.animales.animal.find_one_and_update(
-        {"_id": ObjectId(id)},
-        {"$set": {
-            "nombre_animal": animal.nombre_animal,
-            "fecha_nacimiento": animal.fecha_nacimiento.isoformat(),
-            "edad": animal.edad,
-            "especie": animal.especie,
-            "habitat": animal.habitat,
-        }}
-    )
-    return animalEntity(conn.animales.animal.find_one({"_id": ObjectId(id)}))
+    try:
+        conn.animales.animal.find_one_and_update(
+            {"_id": ObjectId(id)},
+            {"$set": {
+                "nombre_animal": animal.nombre_animal,
+                "fecha_nacimiento": animal.fecha_nacimiento.isoformat(),
+                "edad": animal.edad,
+                "especie": animal.especie,
+                "habitat": animal.habitat,
+            }}
+        )
+
+        updated_animal = conn.animales.animal.find_one({"_id": ObjectId(id)})
+
+        if updated_animal:
+            return animalEntity(updated_animal)
+
+        raise HTTPException(status_code=404, detail=f"Animal con id:{id} no encontrado")
+    
+    except ValidationError as ve:
+        raise HTTPException(status_code=422, detail=f"Error de validación: {ve.errors()}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
 
 @animal.delete("/animales/{id}")
 def delete_animal(id: str):
