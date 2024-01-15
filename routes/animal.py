@@ -39,7 +39,8 @@ def create_animal(animal: Animal):
 
         raise HTTPException(status_code=500, detail="Error al crear el animal.")
     except ValidationErr as ve:
-        raise HTTPException(status_code=422, detail=f"Error de validación: {ve.errors()}")
+        error_message = ve.errors()[0]['msg'] if ve.errors() else "Error de validación"
+        raise HTTPException(status_code=422, detail=error_message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
