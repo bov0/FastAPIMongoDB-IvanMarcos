@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=D:\2 DAW\Servidor\Práctica -1. 2º Trimestre\Mongo-DB\venv
+set VIRTUAL_ENV=C:\Users\ibay2\OneDrive\Documentos\DAW2\Desarrollo de aplicaciones en entorno servidor\TR02-PR01-IvanMarcos\FastAPIMongoDB-IvanMarcos\venv
 
 if not defined PROMPT set PROMPT=$P$G
 

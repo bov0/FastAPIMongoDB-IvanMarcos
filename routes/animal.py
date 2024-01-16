@@ -1,5 +1,4 @@
-from xml.dom import ValidationErr
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException
 from config.db import conn
 from schemas.animal import animalEntity, animalesEntity
 from models.animal import Animal
@@ -15,7 +14,11 @@ def find_all_animales():
 
 @animal.get("/animales/{id}")
 def find_animal(id: str):
-    object_id = ObjectId(id)
+    
+    try:
+        object_id = ObjectId(id)
+    except:
+        raise HTTPException(status_code=400, detail='ID no válido')
     
     animal = conn.animales.animal.find_one({"_id": object_id})
     
@@ -26,56 +29,60 @@ def find_animal(id: str):
 
 @animal.post("/animales")
 def create_animal(animal: Animal):
-    try:
-        new_animal = dict(animal)
-        new_animal['fecha_nacimiento'] = animal.fecha_nacimiento.isoformat()
 
-        id = conn.animales.animal.insert_one(new_animal).inserted_id
+    if not animal.nombre_animal.isalpha():
+        raise HTTPException(status_code=400, detail='El nombre del animal solo puede contener letras a-zA-Z')
+    elif animal.edad < 0:
+        raise HTTPException(status_code=400, detail='La edad no puede ser negativa')
+    
+    new_animal = dict(animal)
+    
+    new_animal['fecha_nacimiento'] = animal.fecha_nacimiento.isoformat()
 
-        animal_result = conn.animales.animal.find_one({"_id": id})
+    id = conn.animales.animal.insert_one(new_animal).inserted_id
 
-        if animal_result:
-            return animalEntity(animal_result)
+    animal = conn.animales.animal.find_one({"_id": id})
 
-        raise HTTPException(status_code=500, detail="Error al crear el animal.")
-    except ValidationErr as ve:
-        raise HTTPException(status_code=422, detail=f"Error de validación: {ve.errors()}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
-
-
+    return animalEntity(animal)
 
 @animal.put("/animales/{id}")
 def update_animal(id: str, animal: Animal):
+
     try:
-        conn.animales.animal.find_one_and_update(
-            {"_id": ObjectId(id)},
-            {"$set": {
-                "nombre_animal": animal.nombre_animal,
-                "fecha_nacimiento": animal.fecha_nacimiento.isoformat(),
-                "edad": animal.edad,
-                "especie": animal.especie,
-                "habitat": animal.habitat,
-            }}
-        )
+        object_id = ObjectId(id)
+    except:
+        raise HTTPException(status_code=400, detail='ID no válido')
 
-        updated_animal = conn.animales.animal.find_one({"_id": ObjectId(id)})
+    if not animal.nombre_animal.isalpha():
+        raise HTTPException(status_code=400, detail='El nombre del animal solo puede contener letras a-zA-Z')
+    elif animal.edad < 0:
+        raise HTTPException(status_code=400, detail='La edad no puede ser negativa')
 
-        if updated_animal:
-            return animalEntity(updated_animal)
-
-        raise HTTPException(status_code=404, detail=f"Animal con id:{id} no encontrado")
+    conn.animales.animal.find_one_and_update(
+        {"_id": ObjectId(id)},
+        {"$set": {
+            "nombre_animal": animal.nombre_animal,
+            "fecha_nacimiento": animal.fecha_nacimiento.isoformat(),
+            "edad": animal.edad,
+            "especie": animal.especie,
+            "habitat": animal.habitat,
+        }}
+    )
     
-    except ValidationError as ve:
-        raise HTTPException(status_code=422, detail=f"Error de validación: {ve.errors()}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
-
+    return animalEntity(conn.animales.animal.find_one({"_id": ObjectId(id)}))
 
 @animal.delete("/animales/{id}")
 def delete_animal(id: str):
-    conn.animales.animal.find_one_and_delete({
-        "_id": ObjectId(id)
-    })
-    return {"message": "Animal eliminado correctamente"}
+    try:
+        object_id = ObjectId(id)
+    except:
+        raise HTTPException(status_code=400, detail='ID no válido')
 
+    result = conn.animales.animal.find_one_and_delete({
+        "_id": object_id
+    })
+
+    if not result:
+        raise HTTPException(status_code=404, detail='Animal no encontrado')
+
+    return {"message": "Animal eliminado correctamente"}
